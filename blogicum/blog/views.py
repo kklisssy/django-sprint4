@@ -93,6 +93,25 @@ def edit_post(request, post_id):
 
 
 @login_required
+def delete_post(request, post_id):
+    template = 'blog/create.html'
+    post = get_object_or_404(Post, pk=post_id)
+
+    if request.user != post.author:
+        return redirect('blog:post_detail', pk=post.pk)
+
+    if request.method == 'POST':
+        post.delete()
+        return redirect(
+            'blog:profile',
+            username=request.user.username,
+        )
+
+    form = PostForm(instance=post)
+    return render(request, template, {'form': form})
+
+
+@login_required
 def add_comment(request, post_id):
     template = 'blog/detail.html'
     post = get_object_or_404(Post, pk=post_id)
@@ -149,6 +168,25 @@ def edit_comment(request, post_id, comment_id):
         'comment': comment,
     }
     return render(request, template, context)
+
+
+@login_required
+def delete_comment(request, post_id, comment_id):
+    template = 'blog/comment.html'
+    comment = get_object_or_404(
+        Comment,
+        pk=comment_id,
+        post_id=post_id,
+    )
+
+    if request.user != comment.author:
+        return redirect('blog:post_detail', pk=post_id)
+
+    if request.method == 'POST':
+        comment.delete()
+        return redirect('blog:post_detail', pk=post_id)
+
+    return render(request, template, {'comment': comment},)
 
 
 def published_posts(queryset):
