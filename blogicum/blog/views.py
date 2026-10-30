@@ -23,7 +23,7 @@ def profile(request, username):
 
     post_list = post_list.annotate(
         comment_count=Count('comments'),
-    )
+    ).order_by('-pub_date', '-pk')
 
     paginator = Paginator(post_list, 10)
     page_obj = paginator.get_page(request.GET.get('page'))
@@ -204,7 +204,7 @@ def index(request):
     post_list = published_posts(Post.objects.all())
     post_list = post_list.annotate(
         comment_count=Count('comments'),
-    )
+    ).order_by('-pub_date', '-pk')
     
     paginator = Paginator(post_list, 10)
     page_obj = paginator.get_page(request.GET.get('page'))
@@ -228,7 +228,7 @@ def category(request, category_slug):
     post_list = published_posts(category_obj.posts.all())
     post_list = post_list.annotate(
         comment_count=Count('comments'),
-    )
+    ).order_by('-pub_date', '-pk')
 
     paginator = Paginator(post_list, 10)
     page_obj = paginator.get_page(request.GET.get('page'))
