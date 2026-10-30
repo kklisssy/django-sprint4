@@ -4,6 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect
 from .forms import UserForm
 from .models import Post, Category
+from django.core.paginator import Paginator
 
 from django.contrib.auth import get_user_model
 
@@ -19,9 +20,12 @@ def profile(request, username):
     if request.user != profile_user:
         post_list = published_posts(post_list)
 
+    paginator = Paginator(post_list, 10)
+    page_obj = paginator.get_page(request.GET.get('page'))
+
     context = {
         'profile': profile_user,
-        'post_list': post_list,
+        'page_obj': page_obj,
     }
     return render(request, template, context)
 
@@ -52,10 +56,12 @@ def published_posts(queryset):
 
 def index(request):
     template = 'blog/index.html'
-    post_list = published_posts(Post.objects.all())[:5]
+    post_list = published_posts(Post.objects.all())
+    paginator = Paginator(post_list, 10)
+    page_obj = paginator.get_page(request.GET.get('page'))
 
     context = {
-        'post_list': post_list
+        'page_obj': page_obj
     }
 
     return render(request, template, context)
@@ -72,9 +78,12 @@ def category(request, category_slug):
 
     post_list = published_posts(category_obj.posts.all())
 
+    paginator = Paginator(post_list, 10)
+    page_obj = paginator.get_page(request.GET.get('page'))
+
     context = {
         'category': category_obj,
-        'post_list': post_list
+        'page_obj': page_obj
     }
 
     return render(request, template, context)
