@@ -18,6 +18,8 @@ from django.urls import path, include
 from django.contrib.auth.forms import UserCreationForm
 from django.urls import reverse_lazy
 from django.views.generic import CreateView
+from django.conf import settings
+from django.conf.urls.static import static
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -38,3 +40,9 @@ urlpatterns = [
 
 handler404 = 'pages.views.page_not_found'
 handler500 = 'pages.views.server_error'
+
+if settings.DEBUG:
+    urlpatterns += static(
+        settings.MEDIA_URL,
+        document_root=settings.MEDIA_ROOT,
+    )
