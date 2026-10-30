@@ -2,9 +2,10 @@ from django.shortcuts import render, get_object_or_404
 from django.utils import timezone
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect
-from .forms import UserForm, PostForm
-from .models import Post, Category
+from .forms import UserForm, PostForm, CommentForm
+from .models import Post, Category, Comment
 from django.core.paginator import Paginator
+from django.db.models import Count
 
 from django.contrib.auth import get_user_model
 
@@ -19,6 +20,10 @@ def profile(request, username):
 
     if request.user != profile_user:
         post_list = published_posts(post_list)
+
+    post_list = post_list.annotate(
+        comment_count=Count('comments'),
+    )
 
     paginator = Paginator(post_list, 10)
     page_obj = paginator.get_page(request.GET.get('page'))
@@ -87,6 +92,65 @@ def edit_post(request, post_id):
     return render(request, template, {'form': form})
 
 
+@login_required
+def add_comment(request, post_id):
+    template = 'blog/detail.html'
+    post = get_object_or_404(Post, pk=post_id)
+
+    if request.user != post.author:
+        post = get_object_or_404(
+            published_posts(Post.objects.all()),
+            pk=post_id,
+        )
+
+    if request.method == 'POST':
+        form = CommentForm(request.POST)
+
+        if form.is_valid():
+            comment = form.save(commit=False)
+            comment.post = post
+            comment.author = request.user
+            comment.save()
+            return redirect('blog:post_detail', pk=post.pk)
+    else:
+        return redirect('blog:post_detail', pk=post.pk)
+
+    context = {
+        'post': post,
+        'form': form,
+        'comments': post.comments.select_related('author'),
+    }
+    return render(request, template, context)
+
+
+@login_required
+def edit_comment(request, post_id, comment_id):
+    template = 'blog/comment.html'
+    comment = get_object_or_404(
+        Comment,
+        pk=comment_id,
+        post_id=post_id,
+    )
+
+    if request.user != comment.author:
+        return redirect('blog:post_detail', pk=post_id)
+
+    if request.method == 'POST':
+        form = CommentForm(request.POST, instance=comment)
+
+        if form.is_valid():
+            form.save()
+            return redirect('blog:post_detail', pk=post_id)
+    else:
+        form = CommentForm(instance=comment)
+
+    context = {
+        'form': form,
+        'comment': comment,
+    }
+    return render(request, template, context)
+
+
 def published_posts(queryset):
     return queryset.select_related(
         'category', 'author', 'location',
@@ -100,6 +164,10 @@ def published_posts(queryset):
 def index(request):
     template = 'blog/index.html'
     post_list = published_posts(Post.objects.all())
+    post_list = post_list.annotate(
+        comment_count=Count('comments'),
+    )
+    
     paginator = Paginator(post_list, 10)
     page_obj = paginator.get_page(request.GET.get('page'))
 
@@ -120,6 +188,9 @@ def category(request, category_slug):
     )
 
     post_list = published_posts(category_obj.posts.all())
+    post_list = post_list.annotate(
+        comment_count=Count('comments'),
+    )
 
     paginator = Paginator(post_list, 10)
     page_obj = paginator.get_page(request.GET.get('page'))
@@ -146,7 +217,9 @@ def detail(request, pk):
         )
 
     context = {
-        'post': post 
+        'post': post,
+        'form': CommentForm(),
+        'comments': post.comments.select_related('author'),
     }
 
     return render(request, template, context)
