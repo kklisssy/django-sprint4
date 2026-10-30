@@ -22,3 +22,7 @@ urlpatterns = [
     path('', include('blog.urls')),
     path('auth/', include('django.contrib.auth.urls')),
 ]
+
+
+handler404 = 'pages.views.page_not_found'
+handler500 = 'pages.views.server_error'
