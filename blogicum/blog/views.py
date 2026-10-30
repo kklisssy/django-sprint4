@@ -1,7 +1,43 @@
 from django.shortcuts import render, get_object_or_404
 from django.utils import timezone
-
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import redirect
+from .forms import UserForm
 from .models import Post, Category
+
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
+
+def profile(request, username):
+    template = 'blog/profile.html'
+    profile_user = get_object_or_404(User, username=username)
+    post_list = profile_user.posts.select_related(
+        'category', 'author', 'location',
+    )
+
+    if request.user != profile_user:
+        post_list = published_posts(post_list)
+
+    context = {
+        'profile': profile_user,
+        'post_list': post_list,
+    }
+    return render(request, template, context)
+
+@login_required
+def edit_profile(request):
+    template = 'blog/user.html'
+    if request.method == 'POST':
+        form = UserForm(request.POST, instance=request.user)
+
+        if form.is_valid():
+            user = form.save()
+            return redirect('blog:profile', username=user.username)
+    else:
+        form = UserForm(instance=request.user)
+
+    return render(request, template, {'form': form})
 
 
 def published_posts(queryset):
