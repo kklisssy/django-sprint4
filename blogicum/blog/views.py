@@ -2,7 +2,7 @@ from django.shortcuts import render, get_object_or_404
 from django.utils import timezone
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect
-from .forms import UserForm
+from .forms import UserForm, PostForm
 from .models import Post, Category
 from django.core.paginator import Paginator
 
@@ -42,6 +42,25 @@ def edit_profile(request):
         form = UserForm(instance=request.user)
 
     return render(request, template, {'form': form})
+
+
+@login_required
+def create_post(request):
+    if request.method == 'POST':
+        form = PostForm(request.POST, request.FILES)
+
+        if form.is_valid():
+            post = form.save(commit=False)
+            post.author = request.user
+            post.save()
+            return redirect(
+                'blog:profile',
+                username=request.user.username,
+            )
+    else:
+        form = PostForm()
+
+    return render(request, 'blog/create.html', {'form': form})
 
 
 def published_posts(queryset):
@@ -91,13 +110,19 @@ def category(request, category_slug):
 
 def detail(request, pk):
     template = 'blog/detail.html'
-    detail = get_object_or_404(
-        published_posts(Post.objects.all()),
+    post  = get_object_or_404(
+        Post.objects.select_related('category', 'author', 'location'),
         pk=pk
     )
 
+    if request.user != post.author:
+        post = get_object_or_404(
+            published_posts(Post.objects.all()),
+            pk=pk,
+        )
+
     context = {
-        'post': detail
+        'post': post 
     }
 
     return render(request, template, context)
